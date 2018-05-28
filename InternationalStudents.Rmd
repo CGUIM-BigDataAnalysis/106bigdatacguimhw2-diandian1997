@@ -210,26 +210,16 @@ for(i in 1:5){#將list裡的dataframe一一取出來作圖
 #讀入在目錄下的中英國名對照csv表
 CountriesComparisionTable<-
   read_csv("CountriesComparisionTable.csv")
-#沿用上題作出的簡化作圖資料
-EnglihCountries<-c()
-for(i in 1:nrow(dataToBar)){
-  for(j in 1:nrow(CountriesComparisionTable)){
-    #將資料中代表國家欄位的資料取出再用對照表格建立對照英文國名表
-    if(dataToBar[i,"國別"]==CountriesComparisionTable[j,"Taiwan"]){
-      EnglihCountries<-c(EnglihCountries,CountriesComparisionTable[j,"English"])
-      break
-    }else if(dataToBar[i,"國別"]!=CountriesComparisionTable[j,"Taiwan"]&j==273)
-      EnglihCountries<-c(EnglihCountries,"Unmatch")#若沒有對照的英文則存成Unmatch
-  }
-}
-dataToBar$Country<-array(unlist(EnglihCountries))#將剛做好的英文對照名稱表加入表格
+CountriesComparisionTable$ISO3<-NULL#清除不必要的欄位
+#將英文的國家名稱加入表格
+dataToBar<-left_join(dataToBar,CountriesComparisionTable,by=c("國別"="Taiwan"))
 #若要以choroplethr作面量圖的話必須是一個只有region和value欄位的dataframe
-choropleth = data.frame(region=dataToBar$Country, value=dataToBar$最終總人數)
-#因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是剛剛Unmatch的資料)
+choropleth = data.frame(region=dataToBar$English, value=dataToBar$最終總人數)
+#因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是Unmatch或NA的資料)
 choropleth<-choropleth[!duplicated(choropleth$region),]
 #以country level來作面量圖，並存放至foreginstudent_choropleth
 foreginstudent_choropleth<-
-  country_choropleth(choropleth,"自103年到106年各國來台學生")+
+  country_choropleth(choropleth,"自103年到106年各國來台學生",num_colors=9)+
     scale_fill_brewer("總人數",palette=1)
 #將剛存放的面量圖畫出
 foreginstudent_choropleth
@@ -245,6 +235,7 @@ TaiwanStudent<-
 #取出各個國家和總人數欄位
 TaiwanStudent_clean<-
   TaiwanStudent%>%
+    filter(學年度>=103)%>%
     group_by(對方學校.機構.國別.地區.)%>%
     summarise(總人數=sum(小計))%>%
     arrange(desc(總人數))
@@ -286,7 +277,9 @@ TaiwanStudent_clean<-
   summarise(總人數=sum(總人數))%>%
   arrange(desc(總人數))
 #將剛剛差異較大的名稱的row移除
-TaiwanStudent_clean<-TaiwanStudent_clean[-c(4,8,9,21,35,70),]
+TaiwanStudent_clean<-TaiwanStudent_clean[
+  !grepl("大陸地區|(南韓)|(泰國)|德意志|蒙古國|印度尼西亞",
+         TaiwanStudent_clean$對方學校.機構.國別.地區.),]
 ```
 
 ### 台灣大專院校的學生最喜歡去哪些國家進修交流呢？
@@ -329,29 +322,16 @@ ggplot(dataToBAR,aes(對方學校.機構.國別.地區.,總人數))+
 
 ### 台灣大專院校的學生最喜歡去哪些國家進修交流面量圖
 ```{r FromTWNCountryMap}
-#沿用最一開始的中英文國名對照表
-EnglihCountries<-c()
-for(i in 1:nrow(TaiwanStudent_clean)){
-  for(j in 1:nrow(CountriesComparisionTable)){
-    #將要畫表格的資料中代表國家欄位的資料取出再用對照表格建立對照英文國名
-    if(TaiwanStudent_clean[i,"對方學校.機構.國別.地區."]==
-       CountriesComparisionTable[j,"Taiwan"]){
-      EnglihCountries<-c(EnglihCountries,CountriesComparisionTable[j,"English"])
-      break
-    }else if(TaiwanStudent_clean[i,"對方學校.機構.國別.地區."]!=
-             CountriesComparisionTable[j,"Taiwan"]&j==273)
-      EnglihCountries<-c(EnglihCountries,"Unmatch")#若沒有對照的英文則存成Unmatch
-  }
-}
-#將剛做好的英文對照名稱加入表格
-TaiwanStudent_clean$Country<-array(unlist(EnglihCountries))
+#將英文國家名稱加入資料表
+TaiwanStudent_clean<-left_join(TaiwanStudent_clean,CountriesComparisionTable,
+                               by=c("對方學校.機構.國別.地區."="Taiwan"))
 #若要以choroplethr作面量圖的話必須是一個只有region和value欄位的dataframe
-choropleth = data.frame(region=TaiwanStudent_clean$Country, value=TaiwanStudent_clean$總人數)
+choropleth = data.frame(region=TaiwanStudent_clean$English, value=TaiwanStudent_clean$總人數)
 #因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是剛剛Unmatch的資料)
 choropleth<-choropleth[!duplicated(choropleth$region),]
 #以country level來作面量圖，並存放至TaiwanStudent_choropleth中
 TaiwanStudent_choropleth<-
-  country_choropleth(choropleth,"自103年到106年大專院校出國留學生")+
+  country_choropleth(choropleth,"自103年到106年大專院校出國留學生",num_colors=9)+
     scale_fill_brewer("總人數",palette=2)
 #將剛存放的面量圖畫出
 TaiwanStudent_choropleth
@@ -381,25 +361,15 @@ Exchangestudent%>%
 
 ### 台灣學生最喜歡去哪些國家留學面量圖
 ```{r FromTWNAbMap}
-EnglihCountries<-c()
-for(i in 1:nrow(Exchangestudent)){
-  for(j in 1:nrow(CountriesComparisionTable)){
-    #將要畫表格的資料中代表國家欄位的資料取出再用對照表格建立對照英文國名
-   if(Exchangestudent[i,"國別"]==CountriesComparisionTable[j,"Taiwan"]){
-     EnglihCountries<-c(EnglihCountries,CountriesComparisionTable[j,"English"])
-     break
-   }else if(Exchangestudent[i,"國別"]!=CountriesComparisionTable[j,"Taiwan"]&j==273)
-     EnglihCountries<-c(EnglihCountries,"Unmatch")#若沒有對照的英文則存成Unmatch
-  }
-}
-#將剛做好的英文對照名稱加入表格
-Exchangestudent$Country<-array(unlist(EnglihCountries))
+#將英文國家名稱加入資料表
+Exchangestudent<-left_join(Exchangestudent,CountriesComparisionTable,
+                               by=c("國別"="Taiwan"))
 #若要以choroplethr作面量圖的話必須是一個只有region和value欄位的dataframe
-choropleth = data.frame(region=Exchangestudent$Country, value=Exchangestudent$總人數)
+choropleth = data.frame(region=Exchangestudent$English, value=Exchangestudent$總人數)
 #因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是剛剛Unmatch的資料)
 choropleth<-choropleth[!duplicated(choropleth$region),]
 #以country level來作面量圖
-country_choropleth(choropleth,"世界各主要國家之我國留學生")+
+country_choropleth(choropleth,"世界各主要國家之我國留學生",num_colors=9)+
   scale_fill_brewer("總人數",palette=8)
 ```
 

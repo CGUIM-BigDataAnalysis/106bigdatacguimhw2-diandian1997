@@ -307,39 +307,29 @@ CountriesComparisionTable<-
     ## )
 
 ``` r
-#沿用上題作出的簡化作圖資料
-EnglihCountries<-c()
-for(i in 1:nrow(dataToBar)){
-  for(j in 1:nrow(CountriesComparisionTable)){
-    #將資料中代表國家欄位的資料取出再用對照表格建立對照英文國名表
-    if(dataToBar[i,"國別"]==CountriesComparisionTable[j,"Taiwan"]){
-      EnglihCountries<-c(EnglihCountries,CountriesComparisionTable[j,"English"])
-      break
-    }else if(dataToBar[i,"國別"]!=CountriesComparisionTable[j,"Taiwan"]&j==273)
-      EnglihCountries<-c(EnglihCountries,"Unmatch")#若沒有對照的英文則存成Unmatch
-  }
-}
-dataToBar$Country<-array(unlist(EnglihCountries))#將剛做好的英文對照名稱表加入表格
+CountriesComparisionTable$ISO3<-NULL#清除不必要的欄位
+#將英文的國家名稱加入表格
+dataToBar<-left_join(dataToBar,CountriesComparisionTable,by=c("國別"="Taiwan"))
 #若要以choroplethr作面量圖的話必須是一個只有region和value欄位的dataframe
-choropleth = data.frame(region=dataToBar$Country, value=dataToBar$最終總人數)
-#因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是剛剛Unmatch的資料)
+choropleth = data.frame(region=dataToBar$English, value=dataToBar$最終總人數)
+#因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是Unmatch或NA的資料)
 choropleth<-choropleth[!duplicated(choropleth$region),]
 #以country level來作面量圖，並存放至foreginstudent_choropleth
 foreginstudent_choropleth<-
-  country_choropleth(choropleth,"自103年到106年各國來台學生")+
+  country_choropleth(choropleth,"自103年到106年各國來台學生",num_colors=9)+
     scale_fill_brewer("總人數",palette=1)
 ```
 
     ## Warning in super$initialize(country.map, user.df): Your data.frame contains
-    ## the following regions which are not mappable: Unmatch, Singapore
+    ## the following regions which are not mappable: Unmatch, Singapore, NA
 
-    ## Warning: Column `region` has different attributes on LHS and RHS of join
+    ## Warning: Column `region` joining character vector and factor, coercing into
+    ## character vector
 
-    ## Warning in self$bind(): The following regions were missing and are being
-    ## set to NA: afghanistan, angola, montenegro, qatar, western sahara, south
-    ## sudan, somaliland, east timor, taiwan, vanuatu, central african republic,
-    ## northern cyprus, djibouti, eritrea, antarctica, equatorial guinea, kosovo,
-    ## lesotho
+    ## Warning in self$bind(): The following regions were missing and are
+    ## being set to NA: afghanistan, angola, montenegro, qatar, western sahara,
+    ## somaliland, east timor, taiwan, vanuatu, central african republic, northern
+    ## cyprus, djibouti, eritrea, antarctica, equatorial guinea, kosovo, lesotho
 
     ## Scale for 'fill' is already present. Adding another scale for 'fill',
     ## which will replace the existing scale.
@@ -393,6 +383,7 @@ TaiwanStudent<-
 #取出各個國家和總人數欄位
 TaiwanStudent_clean<-
   TaiwanStudent%>%
+    filter(學年度>=103)%>%
     group_by(對方學校.機構.國別.地區.)%>%
     summarise(總人數=sum(小計))%>%
     arrange(desc(總人數))
@@ -434,7 +425,9 @@ TaiwanStudent_clean<-
   summarise(總人數=sum(總人數))%>%
   arrange(desc(總人數))
 #將剛剛差異較大的名稱的row移除
-TaiwanStudent_clean<-TaiwanStudent_clean[-c(4,8,9,21,35,70),]
+TaiwanStudent_clean<-TaiwanStudent_clean[
+  !grepl("大陸地區|(南韓)|(泰國)|德意志|蒙古國|印度尼西亞",
+         TaiwanStudent_clean$對方學校.機構.國別.地區.),]
 ```
 
 ### 台灣大專院校的學生最喜歡去哪些國家進修交流呢？
@@ -449,16 +442,16 @@ TaiwanStudent_clean%>%
 
 | 對方學校.機構.國別.地區. | 總人數 |
 |:-------------------------|:------:|
-| 中國大陸                 |  16425 |
-| 日本                     |  12430 |
-| 美國                     |  8916  |
-| 南韓                     |  4629  |
-| 德國                     |  3164  |
-| 法國                     |  2415  |
-| 英國                     |  1416  |
-| 西班牙                   |  1252  |
-| 加拿大                   |  1180  |
-| 新加坡                   |  1157  |
+| 中國大陸                 |  9891  |
+| 日本                     |  7142  |
+| 美國                     |  4427  |
+| 德國                     |  1764  |
+| 法國                     |  1258  |
+| 英國                     |   742  |
+| 西班牙                   |   721  |
+| 加拿大                   |   689  |
+| 新加坡                   |   673  |
+| 香港                     |   572  |
 
 ### 哪間大學的出國交流學生數最多呢？
 
@@ -514,53 +507,42 @@ ggplot(dataToBAR,aes(對方學校.機構.國別.地區.,總人數))+
 ### 台灣大專院校的學生最喜歡去哪些國家進修交流面量圖
 
 ``` r
-#沿用最一開始的中英文國名對照表
-EnglihCountries<-c()
-for(i in 1:nrow(TaiwanStudent_clean)){
-  for(j in 1:nrow(CountriesComparisionTable)){
-    #將要畫表格的資料中代表國家欄位的資料取出再用對照表格建立對照英文國名
-    if(TaiwanStudent_clean[i,"對方學校.機構.國別.地區."]==
-       CountriesComparisionTable[j,"Taiwan"]){
-      EnglihCountries<-c(EnglihCountries,CountriesComparisionTable[j,"English"])
-      break
-    }else if(TaiwanStudent_clean[i,"對方學校.機構.國別.地區."]!=
-             CountriesComparisionTable[j,"Taiwan"]&j==273)
-      EnglihCountries<-c(EnglihCountries,"Unmatch")#若沒有對照的英文則存成Unmatch
-  }
-}
-#將剛做好的英文對照名稱加入表格
-TaiwanStudent_clean$Country<-array(unlist(EnglihCountries))
+#將英文國家名稱加入資料表
+TaiwanStudent_clean<-left_join(TaiwanStudent_clean,CountriesComparisionTable,
+                               by=c("對方學校.機構.國別.地區."="Taiwan"))
 #若要以choroplethr作面量圖的話必須是一個只有region和value欄位的dataframe
-choropleth = data.frame(region=TaiwanStudent_clean$Country, value=TaiwanStudent_clean$總人數)
+choropleth = data.frame(region=TaiwanStudent_clean$English, value=TaiwanStudent_clean$總人數)
 #因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是剛剛Unmatch的資料)
 choropleth<-choropleth[!duplicated(choropleth$region),]
 #以country level來作面量圖，並存放至TaiwanStudent_choropleth中
 TaiwanStudent_choropleth<-
-  country_choropleth(choropleth,"自103年到106年大專院校出國留學生")+
+  country_choropleth(choropleth,"自103年到106年大專院校出國留學生",num_colors=9)+
     scale_fill_brewer("總人數",palette=2)
 ```
 
     ## Warning in super$initialize(country.map, user.df): Your data.frame contains
-    ## the following regions which are not mappable: Singapore, Unmatch
+    ## the following regions which are not mappable: Singapore, Unmatch, NA
 
-    ## Warning: Column `region` has different attributes on LHS and RHS of join
+    ## Warning: Column `region` joining character vector and factor, coercing into
+    ## character vector
 
     ## Warning in self$bind(): The following regions were missing and are being
     ## set to NA: angola, azerbaijan, moldova, madagascar, macedonia, mali,
-    ## montenegro, mauritania, burundi, namibia, nigeria, nicaragua, pakistan,
-    ## papua new guinea, benin, paraguay, rwanda, western sahara, sudan, burkina
-    ## faso, south sudan, senegal, sierra leone, el salvador, somaliland,
-    ## somalia, suriname, syria, chad, togo, tajikistan, turkmenistan, east
-    ## timor, bulgaria, trinidad and tobago, taiwan, united republic of tanzania,
-    ## uganda, ukraine, uruguay, uzbekistan, the bahamas, venezuela, vanuatu,
-    ## yemen, zambia, zimbabwe, bosnia and herzegovina, albania, bolivia, bhutan,
-    ## botswana, central african republic, united arab emirates, ivory coast,
-    ## cameroon, democratic republic of the congo, republic of congo, cuba,
-    ## northern cyprus, cyprus, argentina, djibouti, dominican republic, algeria,
-    ## eritrea, armenia, ethiopia, gabon, georgia, ghana, antarctica, guinea,
-    ## guinea bissau, equatorial guinea, guatemala, guyana, honduras, haiti,
-    ## iraq, kazakhstan, kenya, kyrgyzstan, kosovo, laos, lebanon, liberia, libya,
-    ## lesotho
+    ## myanmar, montenegro, mozambique, mauritania, burundi, namibia, nigeria,
+    ## nicaragua, pakistan, papua new guinea, north korea, benin, paraguay,
+    ## rwanda, western sahara, sudan, burkina faso, south sudan, senegal, sierra
+    ## leone, el salvador, somaliland, somalia, suriname, syria, chad, togo,
+    ## thailand, tajikistan, turkmenistan, east timor, bulgaria, trinidad and
+    ## tobago, taiwan, united republic of tanzania, uganda, ukraine, uruguay,
+    ## uzbekistan, the bahamas, venezuela, vanuatu, yemen, zambia, zimbabwe,
+    ## bosnia and herzegovina, albania, belize, bolivia, bhutan, botswana, central
+    ## african republic, united arab emirates, ivory coast, cameroon, democratic
+    ## republic of the congo, republic of congo, cuba, northern cyprus, cyprus,
+    ## argentina, djibouti, dominican republic, algeria, eritrea, armenia,
+    ## ethiopia, fiji, gabon, georgia, ghana, antarctica, guinea, gambia, guinea
+    ## bissau, equatorial guinea, guatemala, guyana, honduras, haiti, iran, iraq,
+    ## jamaica, kazakhstan, kenya, kyrgyzstan, kosovo, laos, lebanon, liberia,
+    ## libya, lesotho, luxembourg
 
     ## Scale for 'fill' is already present. Adding another scale for 'fill',
     ## which will replace the existing scale.
@@ -628,32 +610,23 @@ Exchangestudent%>%
 ### 台灣學生最喜歡去哪些國家留學面量圖
 
 ``` r
-EnglihCountries<-c()
-for(i in 1:nrow(Exchangestudent)){
-  for(j in 1:nrow(CountriesComparisionTable)){
-    #將要畫表格的資料中代表國家欄位的資料取出再用對照表格建立對照英文國名
-   if(Exchangestudent[i,"國別"]==CountriesComparisionTable[j,"Taiwan"]){
-     EnglihCountries<-c(EnglihCountries,CountriesComparisionTable[j,"English"])
-     break
-   }else if(Exchangestudent[i,"國別"]!=CountriesComparisionTable[j,"Taiwan"]&j==273)
-     EnglihCountries<-c(EnglihCountries,"Unmatch")#若沒有對照的英文則存成Unmatch
-  }
-}
-#將剛做好的英文對照名稱加入表格
-Exchangestudent$Country<-array(unlist(EnglihCountries))
+#將英文國家名稱加入資料表
+Exchangestudent<-left_join(Exchangestudent,CountriesComparisionTable,
+                               by=c("國別"="Taiwan"))
 #若要以choroplethr作面量圖的話必須是一個只有region和value欄位的dataframe
-choropleth = data.frame(region=Exchangestudent$Country, value=Exchangestudent$總人數)
+choropleth = data.frame(region=Exchangestudent$English, value=Exchangestudent$總人數)
 #因為用choroplethr做面量圖不能有重複的資料，刪除重複的資料(也就是剛剛Unmatch的資料)
 choropleth<-choropleth[!duplicated(choropleth$region),]
 #以country level來作面量圖
-country_choropleth(choropleth,"世界各主要國家之我國留學生")+
+country_choropleth(choropleth,"世界各主要國家之我國留學生",num_colors=9)+
   scale_fill_brewer("總人數",palette=8)
 ```
 
     ## Warning in super$initialize(country.map, user.df): Your data.frame contains
     ## the following regions which are not mappable: Singapore
 
-    ## Warning: Column `region` has different attributes on LHS and RHS of join
+    ## Warning: Column `region` joining character vector and factor, coercing into
+    ## character vector
 
     ## Warning in self$bind(): The following regions were missing and are being
     ## set to NA: afghanistan, angola, azerbaijan, moldova, madagascar, mexico,

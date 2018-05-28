@@ -133,18 +133,20 @@ for(i in 1:177){
       EnglihCountries<-c(EnglihCountries,"Unmatch")
   }
 }
+dataBar<-left_join(dataToBar,Comparision,by=c("國別"="Taiwan"))
 dataToBar$Country<-array(unlist(EnglihCountries))
-df = data.frame(region=dataToBar$Country, value=dataToBar$最終總人數)
+df = data.frame(region=dataBar$English, value=dataBar$最終總人數)
 df<-df[!duplicated(df$region),]
 foreginstudent_choropleth<-
-  country_choropleth(df,"自103年到106年各國來台學生")+
-    scale_fill_brewer("總人數",palette=1)
+  country_choropleth(df,"自103年到106年各國來台學生",num_colors=9)+
+  scale_fill_brewer("總人數",palette=1)
 
 TaiwanStudent<-
   read_csv("GitHub/106bigdatacguimhw2-diandian1997-20180522T011729Z-001/106bigdatacguimhw2-diandian1997/Student_RPT_07.csv")
 #取出各個國家和總人數欄位
 TaiwanStudent_clean<-
   TaiwanStudent%>%
+  filter(學年度>=103)%>%
   group_by(對方學校.機構.國別.地區.)%>%
   summarise(總人數=sum(小計))%>%
   arrange(desc(總人數))
@@ -186,7 +188,9 @@ TaiwanStudent_clean<-
   summarise(總人數=sum(總人數))%>%
   arrange(desc(總人數))
 #將剛剛差異較大的名稱的row移除
-TaiwanStudent_clean<-TaiwanStudent_clean[-c(4,8,9,21,35,70),]
+TaiwanStudent_clean<-TaiwanStudent_clean[
+  !grepl("大陸地區|(南韓)|(泰國)|德意志|蒙古國|印度尼西亞",
+         TaiwanStudent_clean$對方學校.機構.國別.地區.),]
 
 TaiwanStudent_clean%>%
   arrange(desc(總人數))%>%
