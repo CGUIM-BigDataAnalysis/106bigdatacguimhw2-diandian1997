@@ -42,23 +42,60 @@ data103to106%>%
   head(10)%>%
   View()
 
+#讀入各校103年到106年各國來台境外生人數
 data103<-fromJSON("https://quality.data.gov.tw/dq_download_json.php?nid=6289&md5_url=a6d1469f39fe41fb81dbfc373aef3331")
 data104<-fromJSON("https://quality.data.gov.tw/dq_download_json.php?nid=6289&md5_url=8baeae81cba74f35cf0bb1333d3d99f5")
 data105<-fromJSON("https://quality.data.gov.tw/dq_download_json.php?nid=6289&md5_url=1a485383cf9995da679c3798ab4fd681")
 data106<-fromJSON("https://quality.data.gov.tw/dq_download_json.php?nid=6289&md5_url=883e2ab4d5357f70bea9ac44a47d05cc")
-colname<-c("學校類型","學校代碼","學校名稱","學位生_正式修讀學位外國生","學位生_僑生","學位生_正式修讀學位陸生","非學位生_外國交換生","非學位生_外國短期研習及個人選讀","非學位生_大專附設華語文中心學生","非學位生_大陸研修生","非學位生_海青班","境外專班")
+#為了統一103到106年的資料的欄位名稱
+colname<-c("學校類型","學校代碼",
+           "學校名稱","學位生_正式修讀學位外國生",
+           "學位生_僑生","學位生_正式修讀學位陸生",
+           "非學位生_外國交換生","非學位生_外國短期研習及個人選讀",
+           "非學位生_大專附設華語文中心學生","非學位生_大陸研修生",
+           "非學位生_海青班","境外專班")
 colnames(data103)<-colname
 colnames(data104)<-colname
 colnames(data105)<-colname
 colnames(data106)<-colname
+#以相同欄位名稱把103到106年的資料rbind起來
 data103to106<-rbind(data103,data104,data105,data106)
-data103to106$境外專班<-as.numeric(data103to106$境外專班)
-
+#為了要做算術加總將各個欄位的值轉為數字
+data103to106$學位生_正式修讀學位外國生<-
+  as.numeric(data103to106$學位生_正式修讀學位外國生)
+data103to106$學位生_僑生<-
+  as.numeric(data103to106$學位生_僑生)
+data103to106$學位生_正式修讀學位陸生<-
+  as.numeric(data103to106$學位生_正式修讀學位陸生)
+data103to106$非學位生_外國交換生<-
+  as.numeric(data103to106$非學位生_外國交換生)
+data103to106$非學位生_外國短期研習及個人選讀<-
+  as.numeric(data103to106$非學位生_外國短期研習及個人選讀)
+data103to106$非學位生_大專附設華語文中心學生<-
+  as.numeric(data103to106$非學位生_大專附設華語文中心學生)
+data103to106[grepl("…",data103to106$非學位生_大陸研修生),10]<-NA
+data103to106$非學位生_大陸研修生<-
+  as.numeric(data103to106$非學位生_大陸研修生)
+data103to106$非學位生_海青班<-
+  as.numeric(data103to106$非學位生_海青班)
+data103to106$境外專班<-
+  as.numeric(data103to106$境外專班)
+#因為題目標註境外學生所以這裡只有把境外專班的學生人數加總
 data103to106%>%
   group_by(學校名稱)%>%
-  summarise(境外生總人數=sum(境外專班))%>%
-  arrange(desc(境外生總人數))%>%
-  select(學校名稱,境外生總人數)%>%
+  mutate(總人數=學位生_正式修讀學位外國生+
+              學位生_正式修讀學位陸生+
+              學位生_僑生+
+              非學位生_外國交換生+
+              非學位生_外國短期研習及個人選讀+
+              非學位生_大專附設華語文中心學生+
+              非學位生_大陸研修生+
+              非學位生_海青班+
+              境外專班)%>%
+  summarise(最終總人數=sum(總人數,na.rm=T))%>%
+  arrange(desc(最終總人數))%>%
+  select(學校名稱,最終總人數)%>%
+  filter(學校名稱!="無法區分校別")%>%
   head(10)%>%
   View()
 
